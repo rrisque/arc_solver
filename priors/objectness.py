@@ -1,9 +1,58 @@
 import json
 import os
 
-import numpy
+from numpy import median
 
-from utils.utils import plot_task
+
+class Task:
+    def __init__(self, name, task):
+        self.name = name
+        self.train = [Example(i) for i in task['train']]
+        self.test = [Example(i) for i in task['test']]
+
+    def __str__(self):
+        return 'Task {} contains {} training examples.'.format(self.name, len(self.train))
+
+
+class Example:
+    def __init__(self, example):
+        self.input = Scene(example['input'])
+        self.output = Scene(example['output'])
+
+    def __str__(self):
+        return 'Input: {} \n' \
+               'Maps to output {}'.format(self.input, self.output)
+
+
+class Scene:
+    def __init__(self, scene):
+        self.scene = scene
+        self.dimensions = [len(scene), len(scene[0])]
+        self.size = self.dimensions[0] * self.dimensions[1]
+
+    def __str__(self):
+        return 'Scene of dimensions {}, size {}'.format(self.dimensions, self.size)
+
+    def detect_objects(self):
+        objects = []
+        array = self.scene
+
+        print(array)
+
+        for i in range(len(array)):
+            for j in range(len(array[i])):
+                # -1 represents already visited/owned spaces
+                if array[i][j] != -1:
+                    color = array[i][j]
+                    new_point = Point(i, j, color)
+                    new_object = Object(points=[new_point])
+                    array[new_point.x][new_point.y] = -1
+
+                    array = new_object.grow_object(array)
+                    objects.append(new_object)
+
+        for object in objects:
+            print(object)
 
 
 class Point:
@@ -24,6 +73,15 @@ class Object:
     def __init__(self, points):
         self.points = points
 
+    def __str__(self):
+        return "Object of size {} is color {}.".format(self.size(), self.color())
+
+    def size(self):
+        return len(self.points)
+
+    def color(self):
+        return int(median([i.color for i in self.points]))
+
     # grow object based on both spatial contiguity and color
     def grow_object(self, array):
         # consider all points in the current object
@@ -43,38 +101,15 @@ class Object:
         return array
 
 
-def detect_objects_color(task):
-    objects = []
-    points = []
-    array = numpy.asarray(task['test'][0]['input'])
-
-    print(array)
-
-    for i in range(len(array)):
-        for j in range(len(array[i])):
-            # -1 represents already visited/owned spaces
-            if array[i][j] != -1:
-                color = array[i][j]
-                new_point = Point(i, j, color)
-                new_object = Object(points=[new_point])
-                array[new_point.x][new_point.y] = -1
-
-                array = new_object.grow_object(array)
-
-                print(array)
-                objects.append(new_object)
-
-    for object in objects:
-        print(object)
-
-
 training_dir = '../data/training/'
-tasks = []
 for filename in os.listdir(training_dir):
     with open(training_dir + filename, 'r') as f:
-        tasks.append(json.load(f))
+        task = Task(filename, json.load(f))
+    break
 
+print(task)
 
-plot_task(tasks[0])
+for example in task.train:
+    print(example)
 
-detect_objects_color(tasks[0])
+task.train[0].input.detect_objects()
