@@ -1,3 +1,4 @@
 env/
+venv/
 .idea/
 notebooks/.ipynb_checkpoints/
